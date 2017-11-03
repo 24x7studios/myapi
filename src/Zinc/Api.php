@@ -70,21 +70,16 @@ class Api
             'retailer' => $retailer,
             'products' => $products,
             'max_price' => 1,
-            'shipping_method' => 'fastest',
+            'shipping_method' => 'cheapest',
             'shipping_address' => $payload['shipping_address'],
             'billing_address' => $payload['billing_address'],
-            'shipping' => [
-                'order_by' => 'price',
-                'max_days' => 5,
-                'max_price' => 1000,
-            ],
             'payment_method' => [
                 'use_gift' => true,
             ],
             'retailer_credentials' => [
                 'email' => $this->retailer_logins[$retailer]['username'],
                 'password' => $this->retailer_logins[$retailer]['password'],
-                'verification_code' => $this->retailer_logins[$retailer]['verification_code'],
+                'verification_code' => !empty($this->retailer_logins[$retailer]['verification_code']) ? $this->retailer_logins[$retailer]['verification_code'] : '',
             ],
         ];
 
@@ -104,11 +99,15 @@ class Api
         ];
 
         if ($method == 'POST' && !empty($input)) {
-            $attr['form_params'] = $input;
+            $attr[\GuzzleHttp\RequestOptions::JSON] = $input;
         }
 
         $client = new HttpClient();
-        $res = $client->request($method, BASE_URL.$resource, $attr);
+        try {
+            $res = $client->request($method, self::BASE_URL . $resource, $attr);
+        } catch (\GuzzleHttp\Exception\ConnectException $exception) {
+            return false;
+        }
 
         if ($res->getStatusCode() != 200) {
             throw new \Exception("Invalid Response");
